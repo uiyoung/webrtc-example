@@ -35,9 +35,9 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('answer', answer);
   });
 
-  socket.on('ice', ({ roomId, ice }) => {
+  socket.on('candidate', ({ roomId, candidate }) => {
     console.log('ice candidate received', roomId);
-    socket.to(roomId).emit('ice', ice);
+    socket.to(roomId).emit('candidate', candidate);
   });
 
   socket.on('disconnect', () => {

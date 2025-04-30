@@ -34,9 +34,8 @@ function createPeerConnection() {
   peerConnection = new RTCPeerConnection(configuration);
 
   peerConnection.onicecandidate = (event) => {
-    console.log('🚀 ~ createPeerConnection ~ event:', event);
     if (event.candidate) {
-      socket.emit('ice', { roomId, candidate: event.candidate });
+      socket.emit('candidate', { roomId, candidate: event.candidate });
     }
   };
 
@@ -95,7 +94,7 @@ socket.on('answer', async (answer) => {
 });
 
 // ICE candidate를 수신한 경우, peerConnection에 추가
-socket.on('ice', async (ice) => {
+socket.on('candidate', async (ice) => {
   console.log('receive ice candidate');
   await peerConnection.addIceCandidate(ice);
 });
