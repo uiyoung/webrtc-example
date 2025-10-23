@@ -1,7 +1,7 @@
 const socket = io();
 
 let roomId;
-let localStream;
+let localStream = null;
 let peerConnection;
 
 const localVideo = document.querySelector('#localVideo');
@@ -10,11 +10,16 @@ const roomInput = document.querySelector('#roomId');
 const joinButton = document.querySelector('#joinButton');
 
 async function getMedia() {
-  localStream = await navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: true,
-  });
-  localVideo.srcObject = localStream;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+    localVideo.srcObject = localStream;
+  } catch (error) {
+    console.error('미디어 장치 접근 실패', error);
+    throw error;
+  }
 }
 
 // PeerConnection을 생성하고 ICE candidate를 처리하는 함수
@@ -61,8 +66,12 @@ joinButton.addEventListener('click', async () => {
     return;
   }
 
-  await initCall();
-  socket.emit('join', roomId);
+  try {
+    await initCall();
+    socket.emit('join', roomId);
+  } catch (err) {
+    alert('카메라나 마이크를 사용할 수 없습니다. 브라우저 설정을 확인해주세요.');
+  }
 });
 
 // 방에 참가한 경우, 로컬 비디오 스트림을 추가하고 offer를 생성
