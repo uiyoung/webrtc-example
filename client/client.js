@@ -25,7 +25,6 @@ const readyButton = document.querySelector('#readyButton');
 const mediaToggleButton = document.querySelector('#mediaToggleButton');
 const joinButton = document.querySelector('#joinButton');
 const leaveButton = document.querySelector('#leaveButton');
-const roomInfoText = document.querySelector('#roomInfo');
 const videoContainer = document.querySelector('#videoContainer');
 
 // 미디어스트림 가져오기(camera, mic)
@@ -56,7 +55,7 @@ function disableMedia() {
   });
 }
 
-// PeerConnection을 생성하고 ICE candidate를 처리하는 함수
+// WebRTC 연결객체(RTCPeerConnection)을 생성하고 모든 이벤트 핸들러를 설정하는 초기화 함수
 function createPeerConnection() {
   peerConnection = new RTCPeerConnection(rtcConfig);
 
@@ -65,11 +64,11 @@ function createPeerConnection() {
     peerConnection.addTrack(track, localStream);
   });
 
-  // 상대방의 ICE Candidate 수신 시 socket.io로 전송
+  // 로컬 ICE 후보 수집 및 시그널링 서버를 통해 상대 피어에게 전달
   peerConnection.addEventListener('icecandidate', (e) => {
     if (e.candidate) {
-      // 서버를 통해 상대방에게 ICE 후보 정보를 전송
       socket.emit('candidate', { roomId, candidate: e.candidate });
+      addLog('ICE candidate sent');
     }
   });
 
@@ -80,32 +79,38 @@ function createPeerConnection() {
 
   // 연결 상태 로깅
   peerConnection.addEventListener('connectionstatechange', () => {
-    console.log(`Connection: ${peerConnection.connectionState}`);
+    addLog(`Connection: ${peerConnection.connectionState}`);
   });
 }
 
 function cleanup() {
-  // readyButton.disabled = false;
   roomIdInput.disabled = false;
   joinButton.disabled = false;
   leaveButton.disabled = true;
+}
 
-  // if (peerConnection) {
-  //   peerConnection.getSenders().forEach(s => s.track && s.track.stop());
-  //   peerConnection.close();
-  //   peerConnection = null;
-  // }
-  // if (localStream) {
-  //   localStream.getTracks().forEach((track) => track.stop());
-  //   localStream = null;
-  //   localVideo.srcObject = null;
-  // }
-  // remoteVideo.srcObject = null;
+function addLog(message) {
+  const now = new Date();
+
+  const timeString = [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map((n) => String(n).padStart(2, '0'))
+    .join(':');
+
+  const msString = String(now.getMilliseconds()).padStart(3, '0');
+
+  const newItem = document.createElement('li');
+  newItem.textContent = `[${timeString}.${msString}] ${message}`;
+
+  const list = document.getElementById('log-container');
+  list.appendChild(newItem);
+  list.scrollTop = list.scrollHeight;
 }
 
 readyButton.addEventListener('click', async () => {
   try {
     await getMedia();
+    addLog('getMedia Success');
+
     roomIdInput.disabled = false;
     readyButton.disabled = true;
     joinButton.disabled = false;
@@ -151,48 +156,54 @@ mediaToggleButton.addEventListener('click', () => {
 });
 
 /* socket.io 시그널링 수신 처리 */
+
 // 방 참가가 되었음을 알림
 socket.on('joined', ({ roomId }) => {
-  roomInfoText.textContent = `joined room #${roomId}`;
   leaveButton.disabled = false;
+  addLog(`joined room #${roomId}`);
 });
 
 // 방이 full임을 알림
 socket.on('room-full', ({roomId, clientCount}) =>{
   cleanup();
-  roomInfoText.textContent = `room ${roomId} is full`
+  addLog(`room #${roomId} is full.`);
 })
 
-// 방에 두 번째 사용자가 들어와 통화 준비가 되었을 때
+// 상대방 피어 접속 감지 시, WebRTC 세션을 시작하기 위해 Offer를 생성하고 전송 (세션 시작자)
 socket.on('peer-joined', async () => {
-  // offer를 생성하고 전송(첫번째 사용자 역할)
+  addLog('peer joined');
+
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
 
   socket.emit('offer', { roomId, offer });
-  console.log('offer 전송 완료')
+  addLog('offer sent');
 });
 
-// 상대방이 보낸 offer를 수신한 경우, answer를 생성
+// Offer 수신 시, remoteDescription을 설정하고 Answer를 생성/전송 (세션 응답자)
 socket.on('offer', async (offer) => {
-  console.log('receive offer');
+  addLog('offer recieved');
 
   await peerConnection.setRemoteDescription(offer);
+  addLog('remoteDescription set (offer)');
 
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
 
   socket.emit('answer', { roomId, answer });
+  addLog('answer sent');
 });
 
 // 상대방이 보낸 answer를 수신한 경우, remoteDescription을 설정
 socket.on('answer', async (answer) => {
-  console.log('receive answer');
+  addLog('answer recieved');
+
   await peerConnection.setRemoteDescription(answer);
+  addLog('remoteDescription set (answer)');
 });
 
 // ICE candidate를 수신한 경우, peerConnection에 추가
 socket.on('candidate', async (ice) => {
-  console.log('receive ice candidate');
+  addLog('ICE candidate recieved');
   await peerConnection.addIceCandidate(ice);
 });

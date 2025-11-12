@@ -10,7 +10,8 @@
   <body>
     <h1>WebRTC Test</h1>
     <button id="readyButton">ready</button>
-    <input type="text" placeholder="room id" id="roomId" />
+    <hr />
+    <input type="text" placeholder="room id" id="roomId" disabled/>
     <button id="joinButton" disabled>join</button>
     <button id="leaveButton" class="red-button" disabled>leave</button>
     <div id="roomInfo"></div>
@@ -28,6 +29,8 @@
         <video id="remoteVideo" autoplay playsinline width="320"></video>
       </div>
     </div>
+
+    <ul id="log-container"></ul>
   </body>
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>

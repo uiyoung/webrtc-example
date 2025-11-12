@@ -26,3 +26,17 @@
 hr {
   margin: 1rem 0;
 }
+
+#log-container {
+    height: 300px;
+    overflow-y: auto;
+    list-style-type: none;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #f4f4f4;
+}
+
+#log-container li {
+    padding: 0;
+    font-size: 0.8rem;
+}
